@@ -1,0 +1,7 @@
+torch
+gradio
+tokenizers
+numpy
+pandas
+pathlib
+altair
