@@ -4,4 +4,3 @@ tokenizers
 numpy
 pandas
 pathlib
-altair
