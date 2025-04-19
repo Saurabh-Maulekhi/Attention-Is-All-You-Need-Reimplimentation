@@ -3,14 +3,41 @@ import torch.nn as nn
 from model import Transformer
 from config import get_config, get_weights_file_path
 from train import get_model, get_ds, greedy_decode
-import altair as alt
 import pandas as pd
 import numpy as np
 import warnings
 from tokenizers import Tokenizer
 warnings.filterwarnings("ignore")
 
+import kagglehub
+import shutil
+import os
+
 import gradio as gr
+
+
+# downloading Model file
+
+path = kagglehub.model_download("saurabhmaulekhi/english-to-hindi-translation/pyTorch/default")
+print(path)
+# model list
+model_list = os.listdir(path)
+print(model_list)
+model = model_list[0]
+
+source = path +"/" +model
+
+
+try:
+    shutil.rmtree("weights")
+except:
+    pass
+
+os.mkdir("weights")
+
+dest = 'weights'
+
+shutil.move(source,dest)
 
 
 # Define the device
@@ -20,8 +47,10 @@ config = get_config()
 train_dataloader, val_dataloader, vocab_src, vocab_tgt  = get_ds(config)
 model = get_model(config, vocab_src.get_vocab_size(), vocab_tgt.get_vocab_size()).to(device)
 
+
 # load the pretrained wieghts
 model_filename = get_weights_file_path(config, f" 4")
+
 
 # Load the model and map the tensors to the CPU
 state = torch.load(model_filename, map_location=torch.device(device))
@@ -42,68 +71,6 @@ def load_next_batch():
 
     return batch, encoder_input_tokens, decoder_input_tokens
 
-
-def mtx2df(m, max_row, max_col, row_tokens, col_tokens):
-    return pd.DataFrame(
-        [
-            (
-                r,
-                c,
-                float(m[r,c]),
-                "%.3d %s" % (r, row_tokens[r] if len(row_tokens) > r else "<blank>" ),
-                "%.3d %s" % (c, col_tokens[c] if len(col_tokens) > c else "<blank>"),
-            )
-            for r in range(m.shape[0])
-            for c in range(m.shape[1])
-            if r < max_row and c < max_col
-        ],
-        columns = ["row", "column", "value", "row_token", "col_token"],
-    )
-
-
-def get_attn_map(attn_type: str, layer: int, head: int):
-    if attn_type == "encoder":
-        attn = model.encoder.layers[layer].self_attention_block.attention_scores
-
-    elif attn_type == "decoder":
-        attn = model.decoder.layers[layer].self_attention_block.attention_scores
-
-    elif attn_type == "encoder-decoder":  # Cross Attention
-        attn = model.encoder.layers[layer].self_attention_block.attention_scores
-
-    return attn[0, head].data
-
-
-def attn_map(attn_type, layer, head, row_tokens, col_tokens, max_sentence_len):
-    df = mtx2df(
-        get_attn_map(attn_type, layer, head),
-        max_sentence_len,
-        max_sentence_len,
-        row_tokens,
-        col_tokens,
-    )
-
-    return (
-        alt.Chart(data=df)
-        .mark_rect()
-        .encode(
-            x=alt.X("col_token", axis=alt.Axis(title="")),
-            y=alt.Y("row_token", axis=alt.Axis(title="")),
-            color="value",
-            tooltip=["row", "column", "value", "row_token", "col_token"],
-        )
-        .properties(height=400, width=400, title=f"Layer {layer} Head {head}")
-        .interactive()
-    )
-
-def get_all_attention_maps(attn_type: str, layers: list[int], heads: list[int], row_tokens:list, col_tokens, max_sentence_len: int):
-    charts = []
-    for layer in layers:
-        rowCharts = []
-        for head in heads:
-            rowCharts.append(attn_map(attn_type, layer, head, row_tokens, col_tokens, max_sentence_len))
-        charts.append(alt.hconcat(*rowCharts))
-    return alt.vconcat(*charts)
 
 tokenizer_src = Tokenizer.from_file("tokenizer_english_sentence.json") # Getting English Tokenizer file
 
@@ -141,8 +108,3 @@ def translation(eng_input):
     model_out_text = tokenizer_tgt.decode(model_out.detach().cpu().numpy())
 
     return model_out_text
-
-
-# encoder_input_tokens = tokenizer_src.encode(input_sentence).ids
-# decoder_output_tokens = tokenizer_tgt.encode(output_sentence).ids
-
