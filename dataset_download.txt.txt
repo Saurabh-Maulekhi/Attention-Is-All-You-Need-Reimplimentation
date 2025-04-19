@@ -1,1 +1,0 @@
-download dataset from here: https://www.kaggle.com/datasets/kuldeepsingharya/english-to-hindi-parallel-dataset
