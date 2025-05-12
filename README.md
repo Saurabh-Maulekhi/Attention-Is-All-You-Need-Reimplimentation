@@ -1,6 +1,6 @@
 title: Attention is all You need Reimplimentation
 
-short_description: Web app that can translate english to hindi
+Description: Attention is all You need Reimplimentation and Web app that can translate english to hindi
 
 Kaggle Notebook : https://www.kaggle.com/code/saurabhmaulekhi/attention-is-all-you-need-paper-reimplimentation/notebook
 
